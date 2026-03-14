@@ -62,19 +62,10 @@ export const colors = {
   gray: '\x1B[90m',
 } as const
 
+const levelColorMap: Record<string, string> = { error: colors.red, warn: colors.yellow, info: colors.cyan, debug: colors.gray }
+
 export function getLevelColor(level: string): string {
-  switch (level) {
-    case 'error':
-      return colors.red
-    case 'warn':
-      return colors.yellow
-    case 'info':
-      return colors.cyan
-    case 'debug':
-      return colors.gray
-    default:
-      return colors.white
-  }
+  return levelColorMap[level] ?? colors.white
 }
 
 export const cssColors = {
@@ -87,19 +78,10 @@ export const cssColors = {
   reset: 'color: inherit; font-weight: normal',
 } as const
 
+const cssLevelColorMap: Record<string, string> = { error: cssColors.red, warn: cssColors.yellow, info: cssColors.cyan, debug: cssColors.gray }
+
 export function getCssLevelColor(level: string): string {
-  switch (level) {
-    case 'error':
-      return cssColors.red
-    case 'warn':
-      return cssColors.yellow
-    case 'info':
-      return cssColors.cyan
-    case 'debug':
-      return cssColors.gray
-    default:
-      return cssColors.reset
-  }
+  return cssLevelColorMap[level] ?? cssColors.reset
 }
 
 /**

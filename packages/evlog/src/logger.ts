@@ -214,75 +214,48 @@ function formatValue(value: unknown): string {
 }
 
 function prettyPrintWideEvent(event: Record<string, unknown>): void {
-  if (isClient()) {
-    prettyPrintWideEventBrowser(event)
-    return
-  }
-
   const { timestamp, level, service, environment, version, ...rest } = event
-  const levelColor = getLevelColor(level as string)
   const ts = (timestamp as string).slice(11, 23)
-
-  let header = `${colors.dim}${ts}${colors.reset} ${levelColor}${(level as string).toUpperCase()}${colors.reset}`
-  header += ` ${colors.cyan}[${service}]${colors.reset}`
-
-  if (rest.method && rest.path) {
-    header += ` ${rest.method} ${rest.path}`
-    delete rest.method
-    delete rest.path
-  }
-
-  if (rest.status) {
-    const statusColor = (rest.status as number) >= 400 ? colors.red : colors.green
-    header += ` ${statusColor}${rest.status}${colors.reset}`
-    delete rest.status
-  }
-
-  if (rest.duration) {
-    header += ` ${colors.dim}in ${rest.duration}${colors.reset}`
-    delete rest.duration
-  }
-
-  console.log(header)
-
-  const entries = Object.entries(rest).filter(([_, v]) => v !== undefined)
-  const lastIndex = entries.length - 1
-
-  entries.forEach(([key, value], index) => {
-    const isLast = index === lastIndex
-    const prefix = isLast ? '└─' : '├─'
-    const formatted = formatValue(value)
-    console.log(`  ${colors.dim}${prefix}${colors.reset} ${colors.cyan}${key}:${colors.reset} ${formatted}`)
-  })
-}
-
-function prettyPrintWideEventBrowser(event: Record<string, unknown>): void {
-  const { timestamp, level, service, environment, version, ...rest } = event
-  const levelColor = getCssLevelColor(level as string)
-  const ts = (timestamp as string).slice(11, 23)
+  const browser = isClient()
 
   const parts: string[] = []
   const styles: string[] = []
 
-  parts.push(`%c${ts}%c %c${(level as string).toUpperCase()}%c %c[${escapeFormatString(String(service))}]%c`)
-  styles.push(cssColors.dim, cssColors.reset, levelColor, cssColors.reset, cssColors.cyan, cssColors.reset)
+  if (browser) {
+    const lc = getCssLevelColor(level as string)
+    parts.push(`%c${ts}%c %c${(level as string).toUpperCase()}%c %c[${escapeFormatString(String(service))}]%c`)
+    styles.push(cssColors.dim, cssColors.reset, lc, cssColors.reset, cssColors.cyan, cssColors.reset)
+  } else {
+    const lc = getLevelColor(level as string)
+    parts.push(`${colors.dim}${ts}${colors.reset} ${lc}${(level as string).toUpperCase()}${colors.reset} ${colors.cyan}[${service}]${colors.reset}`)
+  }
 
   if (rest.method && rest.path) {
-    parts.push(` ${escapeFormatString(String(rest.method))} ${escapeFormatString(String(rest.path))}`)
+    parts.push(browser ? ` ${escapeFormatString(String(rest.method))} ${escapeFormatString(String(rest.path))}` : ` ${rest.method} ${rest.path}`)
     delete rest.method
     delete rest.path
   }
 
   if (rest.status) {
-    const statusColor = (rest.status as number) >= 400 ? cssColors.red : cssColors.green
-    parts.push(` %c${rest.status}%c`)
-    styles.push(statusColor, cssColors.reset)
+    const sc = browser
+      ? ((rest.status as number) >= 400 ? cssColors.red : cssColors.green)
+      : ((rest.status as number) >= 400 ? colors.red : colors.green)
+    if (browser) {
+      parts.push(` %c${rest.status}%c`)
+      styles.push(sc, cssColors.reset)
+    } else {
+      parts.push(` ${sc}${rest.status}${colors.reset}`)
+    }
     delete rest.status
   }
 
   if (rest.duration) {
-    parts.push(` %c${escapeFormatString(`in ${rest.duration}`)}%c`)
-    styles.push(cssColors.dim, cssColors.reset)
+    if (browser) {
+      parts.push(` %c${escapeFormatString(`in ${rest.duration}`)}%c`)
+      styles.push(cssColors.dim, cssColors.reset)
+    } else {
+      parts.push(` ${colors.dim}in ${rest.duration}${colors.reset}`)
+    }
     delete rest.duration
   }
 
@@ -292,16 +265,13 @@ function prettyPrintWideEventBrowser(event: Record<string, unknown>): void {
   const lastIndex = entries.length - 1
 
   entries.forEach(([key, value], index) => {
-    const isLast = index === lastIndex
-    const prefix = isLast ? '└─' : '├─'
-    const formatted = escapeFormatString(formatValue(value))
-    console.log(
-      `  %c${prefix}%c %c${escapeFormatString(key)}:%c ${formatted}`,
-      cssColors.dim,
-      cssColors.reset,
-      cssColors.cyan,
-      cssColors.reset,
-    )
+    const prefix = index === lastIndex ? '└─' : '├─'
+    const val = formatValue(value)
+    if (browser) {
+      console.log(`  %c${prefix}%c %c${escapeFormatString(key)}:%c ${escapeFormatString(val)}`, cssColors.dim, cssColors.reset, cssColors.cyan, cssColors.reset)
+    } else {
+      console.log(`  ${colors.dim}${prefix}${colors.reset} ${colors.cyan}${key}:${colors.reset} ${val}`)
+    }
   })
 }
 
@@ -408,12 +378,10 @@ export function createLogger<T extends object = Record<string, unknown>>(initial
         message: err.message,
         stack: err.stack,
       }
-      if ('status' in err) errorObj.status = (err as Record<string, unknown>).status
-      if ('statusText' in err) errorObj.statusText = (err as Record<string, unknown>).statusText
-      if ('statusCode' in err) errorObj.statusCode = (err as Record<string, unknown>).statusCode
-      if ('statusMessage' in err) errorObj.statusMessage = (err as Record<string, unknown>).statusMessage
-      if ('data' in err) errorObj.data = (err as Record<string, unknown>).data
-      if ('cause' in err) errorObj.cause = (err as unknown as Record<string, unknown>).cause
+      const errRecord = err as unknown as Record<string, unknown>
+      for (const k of ['status', 'statusText', 'statusCode', 'statusMessage', 'data', 'cause'] as const) {
+        if (k in err) errorObj[k] = errRecord[k]
+      }
 
       if (isPlainObject(context.error)) {
         mergeInto(context.error as Record<string, unknown>, errorObj)
