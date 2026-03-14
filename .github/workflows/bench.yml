@@ -7,6 +7,7 @@ on:
     paths:
       - 'packages/evlog/src/**'
       - 'packages/evlog/bench/core/**'
+      - 'packages/evlog/bench/comparison/**'
       - 'packages/evlog/bench/scripts/**'
       - '!packages/evlog/bench/baseline/**'
       - 'packages/evlog/tsdown.config.ts'
@@ -16,6 +17,7 @@ on:
     paths:
       - 'packages/evlog/src/**'
       - 'packages/evlog/bench/core/**'
+      - 'packages/evlog/bench/comparison/**'
       - 'packages/evlog/bench/scripts/**'
       - '!packages/evlog/bench/baseline/**'
       - 'packages/evlog/tsdown.config.ts'
@@ -53,19 +55,31 @@ jobs:
       - name: Build evlog package
         run: bunx turbo run build --filter=evlog
 
-      - name: Run benchmarks
+      - name: Run core benchmarks
         working-directory: packages/evlog
-        run: bun run bench
+        run: vitest bench bench/core/
+
+      - name: Save core baseline
+        working-directory: packages/evlog
+        run: |
+          mkdir -p bench/baseline
+          cp bench/results.json bench/baseline/bench.json
+
+      - name: Run comparison benchmarks
+        working-directory: packages/evlog
+        run: vitest bench bench/comparison/
+
+      - name: Save comparison baseline
+        working-directory: packages/evlog
+        run: cp bench/results.json bench/baseline/comparison.json
 
       - name: Measure bundle size
         working-directory: packages/evlog
         run: bun bench/scripts/size.ts --json > bench/baseline/size.json
 
-      - name: Update baseline
+      - name: Generate RESULTS.md
         working-directory: packages/evlog
-        run: |
-          mkdir -p bench/baseline
-          cp bench/results.json bench/baseline/bench.json
+        run: bun bench/scripts/report.ts
 
       - name: Create baseline PR
         uses: peter-evans/create-pull-request@v7
@@ -74,7 +88,9 @@ jobs:
           title: "chore(bench): update baseline"
           body: Automated benchmark baseline update from main.
           branch: chore/update-bench-baseline
-          add-paths: packages/evlog/bench/baseline/
+          add-paths: |
+            packages/evlog/bench/baseline/
+            packages/evlog/bench/RESULTS.md
           delete-branch: true
           labels: performance
 
