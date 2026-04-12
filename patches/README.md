@@ -6,4 +6,7 @@
 
 The patch removes `vue` from `dependencies` (it stays in `peerDependencies`). Tracked via `patchedDependencies` in the root `package.json`. See [Bun patch](https://bun.sh/docs/install/patch).
 
+`apps/docs` also declares **`vaul-vue` as a direct dependency** (same version as `@nuxt/ui`) so Vercel/Turbo installs can resolve the module from the app’s graph (Rollup otherwise fails with “failed to resolve import vaul-vue”).
+
 When upgrading `vaul-vue`, refresh or drop this patch if upstream fixes the manifest.
+
