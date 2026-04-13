@@ -46,9 +46,11 @@
     "version": "changeset version",
     "release": "turbo run build --filter='./packages/*' && changeset publish"
   },
-  "devDependencies": {
+  "dependencies": {
     "zod": "^4.3.6",
-    "zod-to-json-schema": "^3.25.2",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "devDependencies": {
     "@ai-sdk/provider": "^3.0.8",
     "@changesets/changelog-github": "^0.6.0",
     "@changesets/cli": "^2.30.0",
@@ -78,7 +80,9 @@
     "vue-demi"
   ],
   "overrides": {
-    "vue": "3.5.32"
+    "vue": "3.5.32",
+    "zod": "^4.3.6",
+    "zod-to-json-schema": "^3.25.2"
   },
   "patchedDependencies": {
     "vaul-vue@0.4.1": "patches/vaul-vue@0.4.1.patch"
